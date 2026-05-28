@@ -22,7 +22,11 @@ function initializeSaaSClients() {
     }
 
     try {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const supabaseLib = window.supabase || (typeof supabase !== 'undefined' ? supabase : null);
+        if (!supabaseLib) {
+            throw new Error('Supabase client library CDN not loaded. Please check your internet connection.');
+        }
+        supabase = supabaseLib.createClient(SUPABASE_URL, SUPABASE_KEY);
         console.log('Supabase client successfully initialized!');
     } catch (e) {
         console.error('Failed to initialize Supabase client:', e);
@@ -102,7 +106,8 @@ async function loadAndRenderClinics() {
         if (clinics.length === 0) {
             container.innerHTML = `
                 <div class="loading-state">
-                    <p>لا توجد عيادات مسجلة حالياً. اضغط على زر الإضافة بالأعلى لتسجيل عيادة!</p>
+                    <i class="fa-solid fa-hospital-user" style="font-size: 2.5rem; color: var(--text-secondary); opacity: 0.5;"></i>
+                    <p style="margin-top: 10px;">لا توجد عيادات مسجلة حالياً. اضغط على زر الإضافة بالأعلى لتسجيل عيادة!</p>
                 </div>
             `;
             return;
@@ -174,6 +179,19 @@ async function loadAndRenderClinics() {
 
     } catch (err) {
         console.error('Failed to load clinics:', err);
+        container.innerHTML = `
+            <div class="loading-state">
+                <i class="fa-solid fa-triangle-exclamation" style="font-size: 2.5rem; color: var(--accent-error);"></i>
+                <p style="margin-top: 10px; color: var(--text-primary); font-weight: bold;">فشل الاتصال بقاعدة البيانات</p>
+                <p style="font-size: 0.85rem; color: var(--text-secondary); max-width: 400px; text-align: center; line-height: 1.6; margin: 5px 0 15px 0;">
+                    ${err.message || 'يرجى التحقق من إعدادات الربط والإنترنت.'}
+                </p>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-primary" onclick="loadAndRenderClinics()"><i class="fa-solid fa-arrows-rotate"></i> إعادة المحاولة</button>
+                    <button class="btn btn-secondary" onclick="showSettingsModal()"><i class="fa-solid fa-sliders"></i> ضبط الإعدادات</button>
+                </div>
+            </div>
+        `;
     }
 }
 
@@ -194,6 +212,13 @@ document.getElementById('save-new-clinic-btn').addEventListener('click', async (
 
     if (!name || !subdomain) {
         alert('يرجى ملء اسم العيادة والنطاق الفرعي!');
+        return;
+    }
+
+    if (!supabase) {
+        alert('من فضلك قم بتهيئة إعدادات Supabase أولاً عبر زر إعدادات البوابة.');
+        registerModal.style.display = 'none';
+        showSettingsModal();
         return;
     }
 
@@ -445,7 +470,7 @@ function attachSocketListeners() {
     socket.on('status-update', (data) => {
         const activeModal = document.getElementById('qr-connection-modal');
         
-        if (activeModal.style.display === 'flex' && activeQRClinicId) {
+        if (activeModal.style.display === 'flex' && activeQRClinicId === data.clinicId) {
             const viewLoading = document.getElementById('qr-loading-view');
             const viewScan = document.getElementById('qr-scan-view');
             const viewReady = document.getElementById('qr-ready-view');
@@ -469,15 +494,17 @@ function attachSocketListeners() {
             }
         }
 
-        document.querySelectorAll('.status-pill').forEach(pill => {
-            const cId = pill.id.replace('pill-', '');
-            pill.className = `status-pill ${data.status.toLowerCase()}`;
-            pill.textContent = data.status === 'Ready' ? 'متصل' : data.status === 'Scanning' ? 'مسح الكود' : data.status === 'Initializing' ? 'تحميل' : 'فصل';
-        });
+        if (data.clinicId) {
+            const pill = document.getElementById(`pill-${data.clinicId}`);
+            if (pill) {
+                pill.className = `status-pill ${data.status.toLowerCase()}`;
+                pill.textContent = data.status === 'Ready' ? 'متصل' : data.status === 'Scanning' ? 'مسح الكود' : data.status === 'Initializing' ? 'تحميل' : 'فصل';
+            }
+        }
     });
 
     socket.on('new-message', (data) => {
-        if (activeMonitorClinicId) {
+        if (activeMonitorClinicId === data.clinicId) {
             appendMonitorMessage({
                 role: data.type === 'sent' ? 'assistant' : 'user',
                 content: data.body,
@@ -546,14 +573,27 @@ closeSettingsBtn.addEventListener('click', () => {
 });
 
 saveSettingsBtn.addEventListener('click', () => {
-    const url = document.getElementById('settings-supa-url').value.trim();
+    let url = document.getElementById('settings-supa-url').value.trim();
     const key = document.getElementById('settings-supa-key').value.trim();
     const backend = document.getElementById('settings-backend-url').value.trim();
     const openrouter = document.getElementById('settings-openrouter-key').value.trim();
 
-    if (!url || !key || !openrouter) {
-        alert('يرجى ملء جميع الحقول المطلوبة لتأمين الإعدادات!');
+    if (!url || !key) {
+        alert('يرجى ملء الحقول المطلوبة (رابط ومفتاح Supabase) لتأمين الإعدادات!');
         return;
+    }
+
+    // Smart Supabase URL auto-correction
+    if (url.includes('supabase.com/dashboard/project/')) {
+        const match = url.match(/project\/([a-zA-Z0-9]+)/);
+        if (match && match[1]) {
+            const refId = match[1];
+            const correctedUrl = `https://${refId}.supabase.co`;
+            console.log(`Auto-corrected Supabase URL from dashboard link: ${correctedUrl}`);
+            url = correctedUrl;
+        }
+    } else if (url && !url.startsWith('http://') && !url.startsWith('https://')) {
+        url = `https://${url}`;
     }
 
     localStorage.setItem('saas_supa_url', url);
@@ -579,6 +619,9 @@ saveSettingsBtn.addEventListener('click', () => {
     // Reboot clients with new keys
     if (initializeSaaSClients()) {
         loadAndRenderClinics();
+    } else {
+        alert('فشل تهيئة Supabase بالبيانات المدخلة! يرجى التحقق من صحة المفاتيح والاتصال.');
+        showSettingsModal();
     }
 });
 

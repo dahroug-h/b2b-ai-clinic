@@ -200,7 +200,8 @@ function getOrCreateClinicClient(clinicId) {
             currentQRs.set(clinicId, qrImage);
             io.to(`clinic-${clinicId}`).emit('status-update', {
                 status: 'Scanning',
-                qr: qrImage
+                qr: qrImage,
+                clinicId: clinicId
             });
         } catch (err) {
             console.error('QR conversion error:', err);
@@ -210,20 +211,20 @@ function getOrCreateClinicClient(clinicId) {
     client.on('authenticated', () => {
         console.log(`Clinic [${clinicId}] WhatsApp Authenticated successfully!`);
         clientStatuses.set(clinicId, 'Initializing');
-        io.to(`clinic-${clinicId}`).emit('status-update', { status: 'Initializing', qr: null });
+        io.to(`clinic-${clinicId}`).emit('status-update', { status: 'Initializing', qr: null, clinicId: clinicId });
     });
 
     client.on('ready', () => {
         console.log(`Clinic [${clinicId}] WhatsApp is READY!`);
         clientStatuses.set(clinicId, 'Ready');
         currentQRs.delete(clinicId);
-        io.to(`clinic-${clinicId}`).emit('status-update', { status: 'Ready', qr: null });
+        io.to(`clinic-${clinicId}`).emit('status-update', { status: 'Ready', qr: null, clinicId: clinicId });
     });
 
     client.on('disconnected', async (reason) => {
         console.log(`Clinic [${clinicId}] WhatsApp disconnected:`, reason);
         clientStatuses.set(clinicId, 'Disconnected');
-        io.to(`clinic-${clinicId}`).emit('status-update', { status: 'Disconnected', qr: null });
+        io.to(`clinic-${clinicId}`).emit('status-update', { status: 'Disconnected', qr: null, clinicId: clinicId });
         
         setTimeout(() => {
             if (clientStatuses.get(clinicId) === 'Disconnected') {
@@ -257,7 +258,8 @@ function getOrCreateClinicClient(clinicId) {
             senderName: resolvedSenderName,
             body: msg.body || '',
             timestamp: new Date().toLocaleTimeString(),
-            type: 'received'
+            type: 'received',
+            clinicId: clinicId
         });
 
         // Trigger AI Core Processing Hook
@@ -406,7 +408,8 @@ ${liveSlots.join(', ')}
                         senderName: 'AI Auto-Responder (You)',
                         body: finalReplyText,
                         timestamp: new Date().toLocaleTimeString(),
-                        type: 'sent'
+                        type: 'sent',
+                        clinicId: clinicId
                     });
                 }
             } catch (e) {
@@ -467,7 +470,7 @@ io.on('connection', (socket) => {
         
         const status = clientStatuses.get(clinicId) || 'Disconnected';
         const qr = currentQRs.get(clinicId) || null;
-        socket.emit('status-update', { status, qr });
+        socket.emit('status-update', { status, qr, clinicId: clinicId });
     });
 
     socket.on('generate-qr', (clinicId) => {
@@ -487,7 +490,7 @@ io.on('connection', (socket) => {
             activeClients.delete(clinicId);
             clientStatuses.set(clinicId, 'Disconnected');
             currentQRs.delete(clinicId);
-            io.to(`clinic-${clinicId}`).emit('status-update', { status: 'Disconnected', qr: null });
+            io.to(`clinic-${clinicId}`).emit('status-update', { status: 'Disconnected', qr: null, clinicId: clinicId });
         }
     });
 });
