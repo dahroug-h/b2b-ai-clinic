@@ -22,7 +22,7 @@ const safeStorage = {
 
 let SUPABASE_URL = safeStorage.getItem('saas_supa_url') || "";
 let SUPABASE_KEY = safeStorage.getItem('saas_supa_key') || "";
-let BACKEND_URL = safeStorage.getItem('saas_backend_url') || "http://68.183.76.140:3000";
+let BACKEND_URL = safeStorage.getItem('saas_backend_url') || "http://68.183.76.140";
 let OPENROUTER_API_KEY = safeStorage.getItem('saas_openrouter_key') || "";
 
 // Initialize Deferred variables
