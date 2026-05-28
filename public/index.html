@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp AI Responder - Proof of Concept</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons via CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="glow-bg-1"></div>
+    <div class="glow-bg-2"></div>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo-area">
+                <div class="logo-icon">
+                    <i class="fa-brands fa-whatsapp"></i>
+                </div>
+                <div class="logo-text">
+                    <h1>WA Responder <span>PoC</span></h1>
+                    <p>WhatsApp AI Linkage & Automated Reply Proof of Concept</p>
+                </div>
+            </div>
+            
+            <div class="header-controls">
+                <div id="status-badge" class="status-badge disconnected">
+                    <span class="pulse-dot"></span>
+                    <span class="status-text">Disconnected</span>
+                </div>
+                <button id="logout-btn" class="btn btn-secondary btn-sm" style="display: none;">
+                    <i class="fa-solid fa-right-from-bracket"></i> Disconnect
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Dashboard Layout -->
+        <main class="dashboard-grid">
+            
+            <!-- Left Panel: Connection Hub & Bot Configuration -->
+            <section class="panel-column left-column">
+                
+                <!-- QR Code & Connection Card -->
+                <div class="card glass-card connection-card">
+                    <div class="card-header">
+                        <h2><i class="fa-solid fa-qrcode"></i> WhatsApp Linkage</h2>
+                    </div>
+                    <div class="card-body">
+                        <!-- Loading State -->
+                        <div id="connection-loading" class="connection-state-view">
+                            <div class="spinner"></div>
+                            <h3>Initializing client...</h3>
+                            <p>Starting secure automated browser instance on the server. Please wait.</p>
+                        </div>
+
+                        <!-- Scan QR State -->
+                        <div id="connection-scan" class="connection-state-view" style="display: none;">
+                            <div class="qr-container-wrapper">
+                                <div class="qr-scanner-overlay">
+                                    <div class="corner top-left"></div>
+                                    <div class="corner top-right"></div>
+                                    <div class="corner bottom-left"></div>
+                                    <div class="corner bottom-right"></div>
+                                    <div class="scanner-line"></div>
+                                </div>
+                                <img id="qr-image" src="" alt="WhatsApp QR Code">
+                            </div>
+                            <h3>Scan QR Code</h3>
+                            <p>Open WhatsApp on your phone &rarr; <strong>Settings</strong> &rarr; <strong>Linked Devices</strong> &rarr; <strong>Link a Device</strong>, then scan the QR code above.</p>
+                        </div>
+
+                        <!-- Ready/Linked State -->
+                        <div id="connection-ready" class="connection-state-view" style="display: none;">
+                            <div class="success-icon-wrapper">
+                                <div class="success-ring"></div>
+                                <i class="fa-solid fa-circle-check"></i>
+                            </div>
+                            <h3>Linked Successfully!</h3>
+                            <p>Your WhatsApp is linked and running. The AI agent is actively listening for incoming messages.</p>
+                            <div class="credentials-badge">
+                                <i class="fa-solid fa-shield-halved"></i> Local Session Authenticated
+                            </div>
+                        </div>
+
+                        <!-- Disconnected / Error State -->
+                        <div id="connection-disconnected" class="connection-state-view" style="display: none;">
+                            <div class="error-icon-wrapper">
+                                <i class="fa-solid fa-triangle-exclamation"></i>
+                            </div>
+                            <h3>Client Disconnected</h3>
+                            <p id="error-message-text">The connection failed or was closed.</p>
+                            <button id="reconnect-btn" class="btn btn-primary btn-sm">
+                                <i class="fa-solid fa-rotate-right"></i> Try Again
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bot Configuration Card -->
+                <div class="card glass-card config-card">
+                    <div class="card-header">
+                        <h2><i class="fa-solid fa-robot"></i> Auto-Responder Rules</h2>
+                        <label class="switch-toggle">
+                            <input type="checkbox" id="responder-toggle" checked>
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label for="reply-template-input">
+                                <span>Mock AI Reply Template</span>
+                                <span class="help-hint">{message} inserts user text</span>
+                            </label>
+                            <textarea id="reply-template-input" rows="6" class="form-control glass-input"></textarea>
+                        </div>
+                        <button id="save-template-btn" class="btn btn-primary btn-block">
+                            <i class="fa-solid fa-floppy-disk"></i> Update Mock Template
+                        </button>
+                        <div id="save-success-msg" class="toast-message" style="display: none;">
+                            <i class="fa-solid fa-circle-check"></i> Template updated successfully!
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Manual Test Message Card -->
+                <div class="card glass-card manual-card">
+                    <div class="card-header">
+                        <h2><i class="fa-solid fa-paper-plane"></i> Outbound Manual Test</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label for="test-phone">Recipient Phone Number</label>
+                            <input type="text" id="test-phone" placeholder="e.g. 201012345678 (include country code)" class="form-control glass-input">
+                        </div>
+                        <div class="form-group">
+                            <label for="test-message">Message Text</label>
+                            <input type="text" id="test-message" placeholder="Type a message..." class="form-control glass-input">
+                        </div>
+                        <button id="send-manual-btn" class="btn btn-secondary btn-block">
+                            Send Manual Test <i class="fa-solid fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- Right Panel: Live Feed Stream -->
+            <section class="panel-column right-column">
+                <div class="card glass-card chat-feed-card">
+                    <div class="card-header">
+                        <div class="card-header-title">
+                            <h2><i class="fa-solid fa-comments"></i> Real-time Message Stream</h2>
+                            <p>Showing message link and mock automated replies as they occur</p>
+                        </div>
+                        <button id="clear-feed-btn" class="btn btn-icon" title="Clear Feed">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="card-body chat-body" id="chat-messages-container">
+                        <!-- Empty State -->
+                        <div id="chat-empty-state" class="empty-state-view">
+                            <div class="empty-icon">
+                                <i class="fa-solid fa-message-slash"></i>
+                            </div>
+                            <h3>No messages yet</h3>
+                            <p>Link your device, then send a message to the scanned WhatsApp number from another phone to see it appear here in real-time, accompanied by the bot's auto-reply!</p>
+                        </div>
+
+                        <!-- Message Bubbles will be injected here dynamically -->
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Error Toast Notification -->
+    <div id="error-toast" class="error-toast" style="display: none;">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        <span id="error-toast-text">An error occurred</span>
+    </div>
+
+    <!-- Socket.io Library from CDN -->
+    <script src="/socket.io/socket.io.js"></script>
+    <!-- Custom JS App -->
+    <script src="app.js"></script>
+</body>
+</html>

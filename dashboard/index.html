@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة تحكم الطبيب الذكي - منصة إدارة العيادات</title>
+    <!-- Google Fonts (Cairo & Outfit) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="glow-bg-1"></div>
+    <div class="glow-bg-2"></div>
+
+    <div class="app-container">
+        <!-- Master Sidebar -->
+        <aside class="sidebar glass-card">
+            <div class="sidebar-header">
+                <div class="logo-icon">
+                    <i class="fa-solid fa-house-medical-flag"></i>
+                </div>
+                <div class="logo-text">
+                    <h2>طبيبك <span>SaaS</span></h2>
+                    <p>منصة حجز المواعيد بالذكاء الاصطناعي</p>
+                </div>
+            </div>
+
+            <nav class="sidebar-menu">
+                <button class="menu-item active" data-tab="clinics-hub">
+                    <i class="fa-solid fa-hospital"></i> <span>مركز العيادات</span>
+                </button>
+                <button class="menu-item" data-tab="setup-genius">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> <span>عبقري تهيئة البيانات</span>
+                </button>
+                <button class="menu-item" data-tab="live-monitor">
+                    <i class="fa-solid fa-magnifying-glass-chart"></i> <span>المراقبة الحية</span>
+                </button>
+                <button class="menu-item" id="open-settings-modal-btn">
+                    <i class="fa-solid fa-sliders"></i> <span>إعدادات البوابة</span>
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="server-status-card">
+                    <div class="status-indicator">
+                        <span class="pulse-dot green"></span>
+                        <p>السيرفر السحابي: <strong id="server-ip-display">68.183.76.140</strong></p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            
+            <!-- TAB 1: Clinics Hub -->
+            <section id="clinics-hub-tab" class="tab-content active">
+                <header class="tab-header">
+                    <div class="header-title">
+                        <h1>مركز العيادات المشتركة</h1>
+                        <p>أضف عيادات جديدة، وراقب حالة ربط واتساب وتفعيل البوت</p>
+                    </div>
+                    <button id="open-register-modal-btn" class="btn btn-primary">
+                        <i class="fa-solid fa-plus"></i> إضافة عيادة جديدة
+                    </button>
+                </header>
+
+                <div class="clinics-grid" id="clinics-cards-container">
+                    <!-- Clinic cards will be dynamically injected here -->
+                    <div class="loading-state">
+                        <div class="spinner"></div>
+                        <p>جاري تحميل العيادات من قاعدة البيانات...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 2: Setup Genius -->
+            <section id="setup-genius-tab" class="tab-content">
+                <header class="tab-header">
+                    <div class="header-title">
+                        <h1>عبقري تهيئة البيانات (Data Setup Genius)</h1>
+                        <p>أدخل بيانات العيادة والمواعيد المتاحة بشكل عشوائي، وسيقوم الذكاء الاصطناعي بضغطها وتهيئة هيكل JSON موجه وتوفير الأكواد الرمزية</p>
+                    </div>
+                </header>
+
+                <div class="genius-layout-grid">
+                    <!-- Setup Form Panel -->
+                    <div class="card glass-card">
+                        <div class="card-header">
+                            <h2><i class="fa-solid fa-pen-to-square"></i> مدخلات تهيئة العيادة</h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-group">
+                                <label for="genius-clinic-select">اختر العيادة المراد تهيئتها</label>
+                                <select id="genius-clinic-select" class="form-control glass-input">
+                                    <option value="">-- اختر عيادة --</option>
+                                    <!-- Dynamic options -->
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="raw-data-input">بيانات العيادة العامة (العنوان، الأطباء، الأسعار، الخدمات)</label>
+                                <textarea id="raw-data-input" rows="5" class="form-control glass-input" placeholder="مثال: عيادة تجميل في المهندسين، الكشف بـ 400 جنيه، دكتور أحمد علي شاطر جداً في الجلدية والتخسيس..."></textarea>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="raw-slots-input">المواعيد المتاحة أسبوعياً</label>
+                                <textarea id="raw-slots-input" rows="4" class="form-control glass-input" placeholder="مثال: السبت والاثنين من 2 الظهر لحد 8 بالليل، كشف كل نص ساعة..."></textarea>
+                            </div>
+
+                            <button id="run-genius-btn" class="btn btn-primary btn-block">
+                                <i class="fa-solid fa-gears"></i> تشغيل العبقري وضغط البيانات
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Output Review & Action Panel -->
+                    <div class="card glass-card">
+                        <div class="card-header">
+                            <h2><i class="fa-solid fa-microchip"></i> مخرجات JSON الرمزية المعالجة</h2>
+                        </div>
+                        <div class="card-body">
+                            <!-- Setup Loader -->
+                            <div id="genius-loader" class="genius-loading-view" style="display: none;">
+                                <div class="spinner"></div>
+                                <h3>جاري معالجة وهيكلة البيانات بالذكاء الاصطناعي...</h3>
+                                <p>يتم الآن إزالة الحشو وترتيب البيانات في هيكل JSON فائق الكثافة وموفر للرموز (Tokens).</p>
+                            </div>
+
+                            <!-- Review State -->
+                            <div id="genius-output-view" class="genius-output-view">
+                                <div class="form-group">
+                                    <label>هيكل الـ JSON المعالج والجاهز للحقن في الـ Prompt</label>
+                                    <textarea id="genius-json-output" rows="12" class="form-control code-input" readonly></textarea>
+                                </div>
+                                <div class="genius-actions-group">
+                                    <button id="save-genius-setup-btn" class="btn btn-secondary btn-block" disabled>
+                                        <i class="fa-solid fa-cloud-arrow-up"></i> حفظ الهيكلة في قاعدة البيانات
+                                    </button>
+                                    <button id="create-sheets-btn" class="btn btn-primary btn-block" disabled>
+                                        <i class="fa-solid fa-file-excel"></i> إنشاء وتفويض صفحة حجز Google Sheets
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 3: Live Monitor -->
+            <section id="live-monitor-tab" class="tab-content">
+                <header class="tab-header">
+                    <div class="header-title">
+                        <h1>المراقبة والتحكم بالرسائل الحية</h1>
+                        <p>راقب محادثات المرضى مع المساعد الذكي لكل عيادة في الوقت الفعلي</p>
+                    </div>
+                </header>
+
+                <div class="monitor-grid">
+                    <!-- Left: Tenant Selector -->
+                    <div class="card glass-card tenant-list-card">
+                        <div class="card-header">
+                            <h2>اختر عيادة للمراقبة</h2>
+                        </div>
+                        <div class="card-body no-padding" id="monitor-tenants-list">
+                            <!-- Dynamic items -->
+                        </div>
+                    </div>
+
+                    <!-- Right: Live Chat Monitor -->
+                    <div class="card glass-card chat-monitor-card">
+                        <div id="chat-monitor-header" class="card-header">
+                            <h2 id="active-monitor-clinic-title"><i class="fa-solid fa-comments"></i> شاشة البث المباشر للرسائل</h2>
+                        </div>
+                        <div class="card-body chat-body" id="monitor-messages-container">
+                            <div class="empty-state-view">
+                                <div class="empty-icon"><i class="fa-solid fa-hospital-user"></i></div>
+                                <h3>اختر عيادة لبدء المراقبة</h3>
+                                <p>بمجرد اختيار العيادة، ستظهر هنا جميع المحادثات الصادرة والواردة تلقائياً في الوقت الفعلي.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- MODAL: Register New Clinic -->
+    <div id="register-clinic-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content glass-card">
+            <div class="modal-header">
+                <h2>إضافة عيادة جديدة للمنصة</h2>
+                <button id="close-modal-btn" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="new-clinic-name">اسم العيادة</label>
+                    <input type="text" id="new-clinic-name" class="form-control glass-input" placeholder="مثال: عيادة النخبة للأسنان">
+                </div>
+                <div class="form-group">
+                    <label for="new-clinic-subdomain">النطاق الفرعي (Subdomain)</label>
+                    <input type="text" id="new-clinic-subdomain" class="form-control glass-input" placeholder="مثال: elnokhba">
+                </div>
+                <div class="form-group">
+                    <label for="new-clinic-email">البريد الإلكتروني للعيادة (لتفويض صفحة Google Sheet)</label>
+                    <input type="email" id="new-clinic-email" class="form-control glass-input" placeholder="name@clinic.com">
+                </div>
+                <div class="form-group">
+                    <label for="new-clinic-reset">دورة إعادة تهيئة المواعيد (Reset Sheet)</label>
+                    <select id="new-clinic-reset" class="form-control glass-input">
+                        <option value="never">أبداً (يدوي)</option>
+                        <option value="weekly">أسبوعي</option>
+                        <option value="monthly">شهري</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="save-new-clinic-btn" class="btn btn-primary btn-block">حفظ وتأكيد العيادة</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: WhatsApp QR Connection Scanner -->
+    <div id="qr-connection-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content glass-card qr-modal">
+            <div class="modal-header">
+                <h2>ربط وتفعيل حساب الواتساب للعيادة</h2>
+                <button id="close-qr-modal-btn" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body text-center">
+                <h3 id="qr-clinic-title">اسم العيادة</h3>
+                
+                <!-- Scanner states -->
+                <div id="qr-loading-view" class="qr-state-view">
+                    <div class="spinner"></div>
+                    <p>جاري تشغيل المتصفح التلقائي وتوليد الكود...</p>
+                </div>
+
+                <div id="qr-scan-view" class="qr-state-view" style="display: none;">
+                    <div class="qr-container-wrapper">
+                        <div class="qr-scanner-overlay">
+                            <div class="corner top-left"></div>
+                            <div class="corner top-right"></div>
+                            <div class="corner bottom-left"></div>
+                            <div class="corner bottom-right"></div>
+                            <div class="scanner-line"></div>
+                        </div>
+                        <img id="modal-qr-image" src="" alt="WhatsApp QR Code">
+                    </div>
+                    <p class="scan-instructions">افتح الواتساب من هاتفك الخاص بالعيادة &rarr; الأجهزة المرتبطة &rarr; ربط جهاز، وقم بمسح الكود أعلاه.</p>
+                </div>
+
+                <div id="qr-ready-view" class="qr-state-view" style="display: none;">
+                    <div class="success-icon-wrapper">
+                        <div class="success-ring"></div>
+                        <i class="fa-solid fa-circle-check"></i>
+                    </div>
+                    <h3>تم ربط الجهاز بنجاح!</h3>
+                    <p>العيادة الآن متصلة بالسيرفر السحابي وتستقبل الرسائل تلقائياً.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Gateway Configuration Settings -->
+    <div id="gateway-settings-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content glass-card">
+            <div class="modal-header">
+                <h2>إعدادات الربط وحماية المفاتيح</h2>
+                <button id="close-settings-modal-btn" class="close-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="settings-supa-url">رابط Supabase URL</label>
+                    <input type="text" id="settings-supa-url" class="form-control glass-input" placeholder="https://xxxx.supabase.co">
+                </div>
+                <div class="form-group">
+                    <label for="settings-supa-key">مفتاح Service Role Key</label>
+                    <input type="password" id="settings-supa-key" class="form-control glass-input" placeholder="eyJhbGci...">
+                </div>
+                <div class="form-group">
+                    <label for="settings-backend-url">رابط سيرفر واتساب السحابي (VPS)</label>
+                    <input type="text" id="settings-backend-url" class="form-control glass-input" placeholder="http://ip:3000">
+                </div>
+                <div class="form-group">
+                    <label for="settings-openrouter-key">مفتاح OpenRouter API Key</label>
+                    <input type="password" id="settings-openrouter-key" class="form-control glass-input" placeholder="sk-or-...">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="save-gateway-settings-btn" class="btn btn-primary btn-block">حفظ الإعدادات محلياً</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Supabase JS Client CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Socket.io Client CDN -->
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <!-- Master App Logic -->
+    <script src="app.js"></script>
+</body>
+</html>

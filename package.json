@@ -1,0 +1,19 @@
+{
+  "name": "whatsapp-b2b-server",
+  "version": "1.0.0",
+  "description": "Multi-Tenant WhatsApp AI Reservation Server for Egyptian Clinics",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5",
+    "whatsapp-web.js": "^1.26.0",
+    "qrcode": "^1.5.3",
+    "@supabase/supabase-js": "^2.43.4",
+    "googleapis": "^137.1.0",
+    "google-auth-library": "^9.11.0",
+    "dotenv": "^16.4.5"
+  }
+}
