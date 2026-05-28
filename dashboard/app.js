@@ -35,6 +35,44 @@ let activeMonitorClinicId = null;
 let activeQRClinicId = null;
 let compiledGeniusJSON = null;
 
+// Automatically fetch server configuration on boot or on-demand
+async function autoFetchConfig(showFeedback = false) {
+    try {
+        console.log(`Attempting to auto-fetch configuration from backend: ${BACKEND_URL}`);
+        const response = await fetch(`${BACKEND_URL}/api/config`);
+        if (response.ok) {
+            const config = await response.json();
+            if (config.SUPABASE_URL && config.SUPABASE_KEY) {
+                SUPABASE_URL = config.SUPABASE_URL;
+                SUPABASE_KEY = config.SUPABASE_KEY;
+                OPENROUTER_API_KEY = config.OPENROUTER_API_KEY || OPENROUTER_API_KEY;
+                
+                safeStorage.setItem('saas_supa_url', SUPABASE_URL);
+                safeStorage.setItem('saas_supa_key', SUPABASE_KEY);
+                safeStorage.setItem('saas_openrouter_key', OPENROUTER_API_KEY);
+                
+                console.log('Successfully loaded SaaS credentials automatically from VPS server!');
+                
+                // Update settings fields if they are open
+                document.getElementById('settings-supa-url').value = SUPABASE_URL;
+                document.getElementById('settings-supa-key').value = SUPABASE_KEY;
+                document.getElementById('settings-openrouter-key').value = OPENROUTER_API_KEY;
+                
+                if (showFeedback) {
+                    alert('تم استيراد الإعدادات والمفاتيح السحابية من السيرفر بنجاح!');
+                }
+                return true;
+            }
+        }
+    } catch (e) {
+        console.warn('Auto-configuration fetch bypassed or failed:', e.message);
+        if (showFeedback) {
+            alert(`فشل استيراد الإعدادات تلقائياً: ${e.message}`);
+        }
+    }
+    return false;
+}
+
 // --- Initialize Clients Dynamically ---
 function initializeSaaSClients() {
     if (!SUPABASE_URL || !SUPABASE_KEY) {
@@ -374,14 +412,47 @@ document.getElementById('create-sheets-btn').addEventListener('click', async () 
     const clinicId = document.getElementById('genius-clinic-select').value;
     if (!clinicId) return;
 
-    const sheetId = `1SheetMock-${Math.random().toString(36).substring(7)}`;
+    const selectedClinic = clinicsList.find(c => c.id === clinicId);
+    if (!selectedClinic) {
+        alert('حدث خطأ في تحديد بيانات العيادة.');
+        return;
+    }
+
+    const btn = document.getElementById('create-sheets-btn');
+    const originalText = btn.innerHTML;
+    btn.setAttribute('disabled', 'true');
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري إنشاء وتفويض الجدول...';
+
     try {
-        const { error } = await supabaseClient.from('clinics').update({ google_sheet_id: sheetId }).eq('id', clinicId);
-        if (error) throw error;
-        alert('تم إرسال طلب إنشاء الجدول وتفويضه للسيرفر السحابي بنجاح!');
+        console.log(`Sending API request to create spreadsheet for Clinic: ${selectedClinic.clinic_name}`);
+        const response = await fetch(`${BACKEND_URL}/api/create-sheet`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                clinicId: clinicId,
+                clinicName: selectedClinic.clinic_name,
+                clinicEmail: selectedClinic.clinic_email || ""
+            })
+        });
+
+        if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.error || 'فشل الاتصال بالسيرفر لإنشاء الجدول.');
+        }
+
+        const result = await response.json();
+        console.log('Real spreadsheet created successfully:', result);
+        
+        alert(`تم إنشاء وتفويض جدول Google Sheet حقيقي لعيادة [${selectedClinic.clinic_name}] بنجاح!\nوتمت مشاركته وتفويضه للبريد الإلكتروني.`);
+        
         if (supabaseClient) loadAndRenderClinics();
     } catch (e) {
-        alert(e.message);
+        alert(`فشل إنشاء الجدول: ${e.message}`);
+    } finally {
+        btn.removeAttribute('disabled');
+        btn.innerHTML = originalText;
     }
 });
 
@@ -579,6 +650,7 @@ const settingsModal = document.getElementById('gateway-settings-modal');
 const openSettingsBtn = document.getElementById('open-settings-modal-btn');
 const closeSettingsBtn = document.getElementById('close-settings-modal-btn');
 const saveSettingsBtn = document.getElementById('save-gateway-settings-btn');
+const importSettingsBtn = document.getElementById('import-gateway-settings-btn');
 
 function showSettingsModal() {
     document.getElementById('settings-supa-url').value = SUPABASE_URL;
@@ -592,6 +664,18 @@ openSettingsBtn.addEventListener('click', showSettingsModal);
 closeSettingsBtn.addEventListener('click', () => {
     settingsModal.style.display = 'none';
 });
+
+if (importSettingsBtn) {
+    importSettingsBtn.addEventListener('click', async () => {
+        const success = await autoFetchConfig(true);
+        if (success) {
+            // Reboot clients with new keys
+            if (initializeSaaSClients()) {
+                loadAndRenderClinics();
+            }
+        }
+    });
+}
 
 saveSettingsBtn.addEventListener('click', () => {
     let url = document.getElementById('settings-supa-url').value.trim();
@@ -647,15 +731,19 @@ saveSettingsBtn.addEventListener('click', () => {
 });
 
 // Initial Bootup Sequence
-const bootSuccess = initializeSaaSClients();
-if (bootSuccess) {
-    // Set Server display IP in sidebar
-    try {
-        const urlObj = new URL(BACKEND_URL);
-        document.getElementById('server-ip-display').textContent = urlObj.hostname;
-    } catch(e) {}
-    loadAndRenderClinics();
-} else {
-    // Force settings open on first ever launch to prompt for key entry
-    showSettingsModal();
+async function startApp() {
+    await autoFetchConfig(false);
+    const bootSuccess = initializeSaaSClients();
+    if (bootSuccess) {
+        // Set Server display IP in sidebar
+        try {
+            const urlObj = new URL(BACKEND_URL);
+            document.getElementById('server-ip-display').textContent = urlObj.hostname;
+        } catch(e) {}
+        loadAndRenderClinics();
+    } else {
+        // Force settings open on first ever launch to prompt for key entry
+        showSettingsModal();
+    }
 }
+startApp();

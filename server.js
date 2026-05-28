@@ -29,6 +29,17 @@ const currentQRs = new Map(); // clinic_id -> base64 QR
 
 app.use(express.json());
 
+// Enable CORS for administrative console
+app.use((req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(200);
+    }
+    next();
+});
+
 // --- Google Sheets Service Account Auth ---
 let googleAuth = null;
 const credsPath = path.join(__dirname, 'google-credentials.json');
@@ -45,6 +56,95 @@ if (fs.existsSync(credsPath)) {
 function getSheetsClient() {
     if (!googleAuth) return null;
     return google.sheets({ version: 'v4', auth: googleAuth });
+}
+
+// Helper: Create a real Google Spreadsheet and share it with clinic email
+async function createRealSpreadsheet(clinicName, clinicEmail) {
+    if (!googleAuth) {
+        throw new Error('Google Credentials not loaded on server.');
+    }
+
+    const sheets = google.sheets({ version: 'v4', auth: googleAuth });
+    const drive = google.drive({ version: 'v3', auth: googleAuth });
+
+    // 1. Create a new Spreadsheet in the service account's Drive
+    const resource = {
+        properties: {
+            title: `حجوزات عيادة - ${clinicName}`,
+        },
+    };
+
+    const spreadsheet = await sheets.spreadsheets.create({
+        resource,
+        fields: 'spreadsheetId,spreadsheetUrl',
+    });
+
+    const spreadsheetId = spreadsheet.data.spreadsheetId;
+    const spreadsheetUrl = spreadsheet.data.spreadsheetUrl;
+    console.log(`Created real spreadsheet for clinic [${clinicName}] with ID: ${spreadsheetId}`);
+
+    // 2. Share spreadsheet with clinicEmail as a writer
+    if (clinicEmail && clinicEmail.trim() !== '') {
+        try {
+            await drive.permissions.create({
+                fileId: spreadsheetId,
+                sendNotificationEmail: true,
+                requestBody: {
+                    type: 'user',
+                    role: 'writer',
+                    emailAddress: clinicEmail.trim(),
+                },
+            });
+            console.log(`Successfully shared spreadsheet ${spreadsheetId} with clinic email ${clinicEmail}`);
+        } catch (err) {
+            console.error(`Failed to share spreadsheet ${spreadsheetId} with email ${clinicEmail}:`, err.message);
+        }
+    }
+
+    // 3. Initialize first month's tab
+    try {
+        const parsedDate = new Date();
+        const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
+        const year = parsedDate.getFullYear();
+        const tabName = `${month}-${year}`;
+
+        // Add monthly tab
+        await sheets.spreadsheets.batchUpdate({
+            spreadsheetId,
+            resource: {
+                requests: [{
+                    addSheet: {
+                        properties: { title: tabName }
+                    }
+                }]
+            }
+        });
+
+        // Add headers to new tab
+        await sheets.spreadsheets.values.append({
+            spreadsheetId,
+            range: `${tabName}!A1`,
+            valueInputOption: 'RAW',
+            resource: {
+                values: [['التاريخ', 'الوقت', 'اسم المريض', 'رقم الهاتف', 'الحالة', 'تاريخ التسجيل']]
+            }
+        });
+
+        // Set decorative text in default Sheet1
+        await sheets.spreadsheets.values.append({
+            spreadsheetId,
+            range: `Sheet1!A1`,
+            valueInputOption: 'RAW',
+            resource: {
+                values: [['تم إنشاء جدول حجوزات المواعيد بنجاح بالذكاء الاصطناعي للمنصة!']]
+            }
+        });
+
+    } catch (tabErr) {
+        console.error('Failed to initialize sheets structure:', tabErr.message);
+    }
+
+    return { spreadsheetId, spreadsheetUrl };
 }
 
 // Helper: Extract slots from Google Sheet or return defaults if blank
@@ -493,6 +593,47 @@ io.on('connection', (socket) => {
             io.to(`clinic-${clinicId}`).emit('status-update', { status: 'Disconnected', qr: null, clinicId: clinicId });
         }
     });
+});
+
+// Expose loaded server configuration securely for the admin panel
+app.get('/api/config', (req, res) => {
+    res.json({
+        SUPABASE_URL: process.env.SUPABASE_URL || "",
+        SUPABASE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || "",
+        OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY || ""
+    });
+});
+
+// Expose dynamic spreadsheet provisioning endpoint
+app.post('/api/create-sheet', async (req, res) => {
+    const { clinicId, clinicName, clinicEmail } = req.body;
+
+    if (!clinicId || !clinicName) {
+        return res.status(400).json({ error: 'clinicId and clinicName are required' });
+    }
+
+    try {
+        console.log(`Creating real spreadsheet for Clinic ID ${clinicId} (${clinicName}), Email: ${clinicEmail}`);
+        const result = await createRealSpreadsheet(clinicName, clinicEmail);
+        
+        // Update database Google Sheet ID in Supabase
+        const { data, error } = await supabase
+            .from('clinics')
+            .update({ google_sheet_id: result.spreadsheetId })
+            .eq('id', clinicId)
+            .select();
+
+        if (error) throw error;
+
+        res.json({
+            success: true,
+            sheetId: result.spreadsheetId,
+            sheetUrl: result.spreadsheetUrl
+        });
+    } catch (err) {
+        console.error('Failed to create sheet:', err);
+        res.status(500).json({ error: err.message || 'Failed to create sheet' });
+    }
 });
 
 server.listen(PORT, () => {

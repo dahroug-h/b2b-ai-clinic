@@ -31,6 +31,28 @@
     box-sizing: border-box;
 }
 
+/* Custom Scrollbar Styles for Premium Feel */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(15, 23, 42, 0.02);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(15, 23, 42, 0.12);
+    border-radius: 10px;
+    transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-indigo);
+    opacity: 0.8;
+}
+
 body {
     background-color: var(--bg-primary);
     color: var(--text-primary);
@@ -324,16 +346,32 @@ textarea.form-control {
 
 select.form-control {
     appearance: none;
-    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-color: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    border-radius: 10px;
+    padding: 12px 16px;
+    padding-left: 40px; /* Space for arrow on the left under RTL */
+    font-family: inherit;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
     background-repeat: no-repeat;
     background-position: left 16px center;
     background-size: 16px;
     cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+select.form-control:focus {
+    outline: none;
+    border-color: var(--accent-indigo);
+    background-color: #ffffff;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12), var(--shadow-sm);
 }
 
 select.form-control option {
     background-color: #ffffff;
-    color: #0f172a;
+    color: var(--text-primary);
 }
 
 /* Code Output Textarea */
@@ -580,9 +618,6 @@ input:checked + .slider {
 
 input:checked + .slider:before {
     transform: translateX(22px);
-}
-[dir="rtl"] input:checked + .slider:before {
-    transform: translateX(-22px);
 }
 
 .slider.round {
