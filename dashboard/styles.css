@@ -913,3 +913,36 @@ input:checked + .slider:before {
     50% { top: calc(100% - 14px); }
     100% { top: 12px; }
 }
+
+/* Google Sheet Links & Manual Binding Buttons */
+.sheet-link-anchor {
+    color: var(--accent-emerald);
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    transition: color 0.2s ease;
+}
+
+.sheet-link-anchor:hover {
+    color: var(--accent-emerald-hover);
+    text-decoration: underline;
+}
+
+.btn-link-manual {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.8rem;
+    margin-right: 8px;
+    transition: color 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
+}
+
+.btn-link-manual:hover {
+    color: var(--accent-indigo);
+}

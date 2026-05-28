@@ -180,8 +180,10 @@ async function loadAndRenderClinics() {
             
             // Format sheet path link
             const sheetLink = clinic.google_sheet_id 
-                ? `<a href="https://docs.google.com/spreadsheets/d/${clinic.google_sheet_id}" target="_blank" class="sheet-link-anchor"><i class="fa-solid fa-file-excel"></i> عرض الجدول</a>` 
-                : '<span class="text-danger">غير منشأ</span>';
+                ? `<a href="https://docs.google.com/spreadsheets/d/${clinic.google_sheet_id}" target="_blank" class="sheet-link-anchor"><i class="fa-solid fa-file-excel"></i> عرض الجدول</a>
+                   <button class="btn-link-manual" onclick="promptManualSheet('${clinic.id}', '${clinic.clinic_name.replace(/'/g, "\\'")}')" title="تعديل رابط الجدول"><i class="fa-solid fa-pen"></i></button>` 
+                : `<span class="text-danger">غير منشأ</span>
+                   <button class="btn-link-manual" onclick="promptManualSheet('${clinic.id}', '${clinic.clinic_name.replace(/'/g, "\\'")}')" style="font-size: 0.75rem; text-decoration: underline; color: var(--accent-indigo); margin-right: 6px; background: none; border: none; cursor: pointer;" title="ربط جدول يدوياً"><i class="fa-solid fa-link"></i> ربط يدوي</button>`;
 
             card.innerHTML = `
                 <div class="clinic-card-header">
@@ -449,7 +451,19 @@ document.getElementById('create-sheets-btn').addEventListener('click', async () 
         
         if (supabaseClient) loadAndRenderClinics();
     } catch (e) {
-        alert(`فشل إنشاء الجدول: ${e.message}`);
+        console.error('Spreadsheet dynamic creation failed:', e);
+        // Intercept 403 / permission error or any 400 bad request error from sheets API
+        if (e.message.includes('permission') || e.message.includes('Forbidden') || e.message.includes('403') || e.message.includes('400')) {
+            const goToManual = confirm(
+                `فشل الإنشاء التلقائي للجدول بسبب قيود أمان ومستندات Google Workspace الخاصة بمؤسستك.\n\n` +
+                `هل ترغب في ربط جدول Google Sheet يدوياً بدلاً من ذلك؟ (يتطلب مشاركته مع بريد البوت)`
+            );
+            if (goToManual) {
+                promptManualSheet(clinicId, selectedClinic.clinic_name);
+            }
+        } else {
+            alert(`فشل إنشاء الجدول: ${e.message}`);
+        }
     } finally {
         btn.removeAttribute('disabled');
         btn.innerHTML = originalText;
@@ -729,6 +743,41 @@ saveSettingsBtn.addEventListener('click', () => {
         showSettingsModal();
     }
 });
+
+// Helper: Extract Google Sheet ID from URL or return raw ID
+function extractSpreadsheetId(urlOrId) {
+    if (!urlOrId) return "";
+    const match = urlOrId.match(/\/d\/([a-zA-Z0-9-_]+)/);
+    return match ? match[1] : urlOrId.trim();
+}
+
+// Manual sheet linkage helper
+window.promptManualSheet = async function(clinicId, clinicName) {
+    const userInput = prompt(
+        `لربط جدول Google Sheet لعيادة [${clinicName}] يدوياً:\n\n` +
+        `1. قم بإنشاء جدول جديد في حسابك الشخصي على Google Drive.\n` +
+        `2. اضغط على Share (مشاركة) وأضف البريد التالي كـ Editor (محرر):\n` +
+        `   whatsapp-booking-bot@b2sb-ai-clinic.iam.gserviceaccount.com\n\n` +
+        `3. الصق رابط الجدول (URL) أو معرف الجدول (Spreadsheet ID) هنا:`
+    );
+
+    if (userInput === null) return; // User cancelled
+
+    const sheetId = extractSpreadsheetId(userInput);
+    if (!sheetId) {
+        alert('معرف الجدول غير صالح!');
+        return;
+    }
+
+    try {
+        const { error } = await supabaseClient.from('clinics').update({ google_sheet_id: sheetId }).eq('id', clinicId);
+        if (error) throw error;
+        alert('تم ربط جدول Google Sheet يدوياً بنجاح!');
+        loadAndRenderClinics();
+    } catch (e) {
+        alert(`فشل الربط: ${e.message}`);
+    }
+};
 
 // Initial Bootup Sequence
 async function startApp() {
