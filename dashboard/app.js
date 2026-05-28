@@ -1,8 +1,29 @@
 // --- Core SaaS Configurations & Local Secure Storage ---
-let SUPABASE_URL = localStorage.getItem('saas_supa_url') || "";
-let SUPABASE_KEY = localStorage.getItem('saas_supa_key') || "";
-let BACKEND_URL = localStorage.getItem('saas_backend_url') || "http://68.183.76.140:3000";
-let OPENROUTER_API_KEY = localStorage.getItem('saas_openrouter_key') || "";
+// Safe localStorage wrapper to prevent crashes in sandboxed/file:// environments
+const safeStorage = {
+    getItem(key) {
+        try {
+            return localStorage.getItem(key) || "";
+        } catch (e) {
+            console.warn(`Storage access blocked for key [${key}]:`, e);
+            return window._tempStorage?.[key] || "";
+        }
+    },
+    setItem(key, value) {
+        try {
+            localStorage.setItem(key, value);
+        } catch (e) {
+            console.warn(`Storage write blocked for key [${key}]:`, e);
+            if (!window._tempStorage) window._tempStorage = {};
+            window._tempStorage[key] = value;
+        }
+    }
+};
+
+let SUPABASE_URL = safeStorage.getItem('saas_supa_url') || "";
+let SUPABASE_KEY = safeStorage.getItem('saas_supa_key') || "";
+let BACKEND_URL = safeStorage.getItem('saas_backend_url') || "http://68.183.76.140:3000";
+let OPENROUTER_API_KEY = safeStorage.getItem('saas_openrouter_key') || "";
 
 // Initialize Deferred variables
 let supabase = null;
@@ -596,10 +617,10 @@ saveSettingsBtn.addEventListener('click', () => {
         url = `https://${url}`;
     }
 
-    localStorage.setItem('saas_supa_url', url);
-    localStorage.setItem('saas_supa_key', key);
-    localStorage.setItem('saas_backend_url', backend);
-    localStorage.setItem('saas_openrouter_key', openrouter);
+    safeStorage.setItem('saas_supa_url', url);
+    safeStorage.setItem('saas_supa_key', key);
+    safeStorage.setItem('saas_backend_url', backend);
+    safeStorage.setItem('saas_openrouter_key', openrouter);
 
     SUPABASE_URL = url;
     SUPABASE_KEY = key;
