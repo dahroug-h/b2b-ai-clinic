@@ -26,7 +26,7 @@ let BACKEND_URL = safeStorage.getItem('saas_backend_url') || "http://68.183.76.1
 let OPENROUTER_API_KEY = safeStorage.getItem('saas_openrouter_key') || "";
 
 // Initialize Deferred variables
-let supabase = null;
+let supabaseClient = null;
 let socket = null;
 
 // State Cache
@@ -43,11 +43,11 @@ function initializeSaaSClients() {
     }
 
     try {
-        const supabaseLib = window.supabase || (typeof supabase !== 'undefined' ? supabase : null);
+        const supabaseLib = window.supabase || (typeof window.supabase !== 'undefined' ? window.supabase : null);
         if (!supabaseLib) {
             throw new Error('Supabase client library CDN not loaded. Please check your internet connection.');
         }
-        supabase = supabaseLib.createClient(SUPABASE_URL, SUPABASE_KEY);
+        supabaseClient = supabaseLib.createClient(SUPABASE_URL, SUPABASE_KEY);
         console.log('Supabase client successfully initialized!');
     } catch (e) {
         console.error('Failed to initialize Supabase client:', e);
@@ -84,7 +84,7 @@ tabButtons.forEach(button => {
             button.classList.add('active');
             document.getElementById(`${targetTab}-tab`).classList.add('active');
             
-            if (!supabase) {
+            if (!supabaseClient) {
                 showSettingsModal();
                 return;
             }
@@ -104,7 +104,7 @@ tabButtons.forEach(button => {
    TAB 1: Clinics Hub (Database Fetch & Render)
    ========================================================================== */
 async function loadAndRenderClinics() {
-    if (!supabase) {
+    if (!supabaseClient) {
         showSettingsModal();
         return;
     }
@@ -118,7 +118,7 @@ async function loadAndRenderClinics() {
     `;
 
     try {
-        const { data: clinics, error } = await supabase.from('clinics').select('*').order('created_at', { ascending: false });
+        const { data: clinics, error } = await supabaseClient.from('clinics').select('*').order('created_at', { ascending: false });
         if (error) throw error;
         
         clinicsList = clinics;
@@ -194,7 +194,7 @@ async function loadAndRenderClinics() {
             toggle.addEventListener('change', async () => {
                 const id = toggle.getAttribute('data-id');
                 const active = toggle.checked;
-                await supabase.from('clinics').update({ bot_active: active }).eq('id', id);
+                await supabaseClient.from('clinics').update({ bot_active: active }).eq('id', id);
             });
         });
 
@@ -236,7 +236,7 @@ document.getElementById('save-new-clinic-btn').addEventListener('click', async (
         return;
     }
 
-    if (!supabase) {
+    if (!supabaseClient) {
         alert('من فضلك قم بتهيئة إعدادات Supabase أولاً عبر زر إعدادات البوابة.');
         registerModal.style.display = 'none';
         showSettingsModal();
@@ -244,7 +244,7 @@ document.getElementById('save-new-clinic-btn').addEventListener('click', async (
     }
 
     try {
-        const { error } = await supabase.from('clinics').insert({
+        const { error } = await supabaseClient.from('clinics').insert({
             clinic_name: name,
             subdomain: subdomain,
             clinic_email: email || null,
@@ -359,7 +359,7 @@ document.getElementById('save-genius-setup-btn').addEventListener('click', async
     if (!clinicId || !compiledGeniusJSON) return;
 
     try {
-        const { error } = await supabase.from('clinic_content').upsert({
+        const { error } = await supabaseClient.from('clinic_content').upsert({
             clinic_id: clinicId,
             structured_data: compiledGeniusJSON
         });
@@ -376,10 +376,10 @@ document.getElementById('create-sheets-btn').addEventListener('click', async () 
 
     const sheetId = `1SheetMock-${Math.random().toString(36).substring(7)}`;
     try {
-        const { error } = await supabase.from('clinics').update({ google_sheet_id: sheetId }).eq('id', clinicId);
+        const { error } = await supabaseClient.from('clinics').update({ google_sheet_id: sheetId }).eq('id', clinicId);
         if (error) throw error;
         alert('تم إرسال طلب إنشاء الجدول وتفويضه للسيرفر السحابي بنجاح!');
-        if (supabase) loadAndRenderClinics();
+        if (supabaseClient) loadAndRenderClinics();
     } catch (e) {
         alert(e.message);
     }
@@ -393,7 +393,7 @@ async function loadAndRenderMonitorList() {
     list.innerHTML = '';
     
     try {
-        const { data: clinics } = await supabase.from('clinics').select('id, clinic_name, subdomain');
+        const { data: clinics } = await supabaseClient.from('clinics').select('id, clinic_name, subdomain');
         clinics.forEach(c => {
             const item = document.createElement('div');
             item.className = 'tenant-monitor-item';
@@ -430,7 +430,7 @@ async function openLiveMonitorForClinic(clinicId, name) {
     if (socket) socket.emit('join-clinic', clinicId);
 
     try {
-        const { data: conv } = await supabase.from('conversations').select('messages').eq('clinic_id', clinicId).single();
+        const { data: conv } = await supabaseClient.from('conversations').select('messages').eq('clinic_id', clinicId).single();
         container.innerHTML = '';
 
         if (!conv || !conv.messages || conv.messages.length === 0) {
